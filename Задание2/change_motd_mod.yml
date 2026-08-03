@@ -1,0 +1,18 @@
+---
+- name: Modify MOTD with hostname, IP and custom greeting
+  hosts: all
+  become: yes
+  vars:
+    greeting: "Have a nice day, System Administrator!"   # ← переменная для приветствия
+
+  tasks:
+    - name: Write dynamic MOTD to /etc/motd
+      ansible.builtin.copy:
+        content: |
+          Hostname: {{ ansible_hostname }}
+          IP Address: {{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}
+          {{ greeting }}
+        dest: /etc/motd
+        owner: root
+        group: root
+        mode: '0644'
