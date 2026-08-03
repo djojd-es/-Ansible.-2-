@@ -1,0 +1,38 @@
+---
+- name: Download and extract Apache Kafka archive
+  hosts: all
+  become: yes
+  vars:
+    kafka_version: "3.7.0"
+    scala_version: "2.13"
+    archive_name: "kafka_{{ scala_version }}-{{ kafka_version }}.tgz"
+    download_url: "https://downloads.apache.org/kafka/{{ kafka_version }}/{{ archive_name }}"
+    temp_dir: "/tmp"
+    install_dir: "/opt/kafka"
+
+  tasks:
+    - name: Create installation directory
+      ansible.builtin.file:
+        path: "{{ install_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Download Kafka archive
+      ansible.builtin.get_url:
+        url: "{{ download_url }}"
+        dest: "{{ temp_dir }}/{{ archive_name }}"
+        timeout: 60
+        validate_certs: yes
+
+    - name: Extract archive into installation directory
+      ansible.builtin.unarchive:
+        src: "{{ temp_dir }}/{{ archive_name }}"
+        dest: "{{ install_dir }}"
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+        creates: "{{ install_dir }}/bin/kafka-topics.sh"
+
+    - name: Remove downloaded archive (cleanup)
+      ansible.builtin.file:
+        path: "{{ temp_dir }}/{{ archive_name }}"
+        state: absent

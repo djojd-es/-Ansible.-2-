@@ -1,0 +1,15 @@
+---
+- name: Modify system Message of the Day (MOTD)
+  hosts: all
+  become: yes
+  vars:
+    motd_message: "Welcome to our Ansible-managed server!\n"
+
+  tasks:
+    - name: Write custom MOTD to /etc/motd
+      ansible.builtin.copy:
+        content: "{{ motd_message }}"
+        dest: /etc/motd
+        owner: root
+        group: root
+        mode: '0644'
