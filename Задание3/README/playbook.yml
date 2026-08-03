@@ -1,0 +1,68 @@
+---
+- name: Установка и настройка веб-сервера Apache  страницей характеристик
+  hosts: webservers
+  become: true
+  
+  vars:
+    apache_port: 80
+
+  roles:
+    - role: configure_apache_with_info
+      tags: [web]
+
+  tasks:
+    # Проверка доступности веб-сайта выполняется после применения роли
+    - name: Проверить доступность веб-страницы
+      uri:
+        url: "http://{{ inventory_hostname }}"
+        status_code: 200
+        timeout: 10
+      delegate_to: localhost
+      run_once: true
+      register: site_check
+      
+    - name: Вывести результат проверки сайта
+      debug:
+        msg: "Сайт http://{{ inventory_hostname }} доступен. Код ответа: {{ site_check.status }}"
+      when: site_check is succeeded
+
+# --- Начало встроенной роли ---
+- name: configure_apache_with_info
+  tags: [web]
+  tasks:
+    - name: Установить пакет Apache
+      apt:
+        name: apache2
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    
+    - name: Убедиться, что служба Apache запущена и добавлена в автозагрузку
+      service:
+        name: "{{ 'apache2' if ansible_os_family == 'Debian' else 'httpd' }}"
+        state: started
+        enabled: yes
+
+    
+    - name: Открыть порт 80 в UFW
+      community.general.ufw:
+        rule: allow
+        port: "{{ apache_port }}"
+        proto: tcp
+      when: ansible_os_family == "Debian"
+    
+    - name: Развернуть шаблон главной страницы Apache
+      template:
+        src: index.html.j2
+        dest: "/var/www/html/index.html"
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart Apache
+
+  handlers:
+    - name: Restart Apache
+      service:
+        name: "{{ 'apache2' if ansible_os_family == 'Debian' else 'httpd' }}"
+        state: restarted
